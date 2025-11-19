@@ -1,128 +1,116 @@
-//---------------------------------------------------
-// Chargement des événements
-//---------------------------------------------------
 async function loadEvents() {
-  const list = document.getElementById("events-list");
-  list.innerHTML = "<p>Chargement...</p>";
+  const container = document.getElementById("events");
+  container.innerHTML = "<p>Chargement...</p>";
 
   const { data, error } = await sb
     .from("events")
     .select("*")
-    .order("event_date")
-    .order("event_time");
+    .order("event_date", { ascending: true })
+    .order("event_time", { ascending: true });
 
   if (error) {
-    list.innerHTML = "<p>Erreur de chargement</p>";
+    container.innerHTML = "<p>Erreur chargement des événements.</p>";
     return;
   }
 
   if (!data || data.length === 0) {
-    list.innerHTML = "<p>Aucun événement pour le moment.</p>";
+    container.innerHTML = "<p>Aucun événement pour le moment.</p>";
     return;
   }
 
-  list.innerHTML = "";
+  let html = "";
 
   data.forEach(ev => {
-    const div = document.createElement("div");
-    div.className = "event-item";
-    div.dataset.id = ev.id;
-    div.innerHTML = `
-      <strong>${ev.title}</strong><br>
-      ${ev.event_date} – ${ev.event_time}
-      <br>${ev.location}
+    html += `
+      <div class="event">
+        <div class="event-title">${ev.title}</div>
+        <div class="event-meta">
+          📅 ${ev.event_date}
+          ${ev.event_time ? " — " + ev.event_time : ""}
+          ${ev.location ? "<br>📍 " + ev.location : ""}
+        </div>
+
+        <div class="join-card">
+          <input type="text" id="name-${ev.id}" placeholder="Nom">
+          <input type="text" id="contact-${ev.id}" placeholder="Email ou téléphone">
+          
+          <select id="type-${ev.id}">
+            <option value="email">Email</option>
+            <option value="sms">SMS</option>
+          </select>
+
+          <button onclick="joinEvent('${ev.id}')">Je participe</button>
+          <p id="msg-${ev.id}"></p>
+        </div>
+      </div>
     `;
-    div.onclick = () => loadEventDetail(ev.id);
-    list.appendChild(div);
   });
+
+  container.innerHTML = html;
 }
 
+async function joinEvent(eventId) {
+  const name = document.getElementById("name-" + eventId).value.trim();
+  const contact = document.getElementById("contact-" + eventId).value.trim();
+  const type = document.getElementById("type-" + eventId).value;
+  const msg = document.getElementById("msg-" + eventId);
 
-//---------------------------------------------------
-// Chargement du détail d’un événement
-//---------------------------------------------------
-async function loadEventDetail(eventId) {
-  const detail = document.getElementById("event-detail");
+  if (!name || !contact) {
+    msg.innerHTML = "Merci de remplir tous les champs.";
+    msg.style.color = "red";
+    return;
+  }
 
-  // Récupérer l'événement
-  const { data: ev, error } = await sb
-    .from("events")
-    .select("*")
-    .eq("id", eventId)
-    .single();
-
-  // Compter les participants
-  const { count } = await sb
-    .from("event_participants")
-    .select("*", { count: "exact", head: true })
-    .eq("event_id", eventId);
-
-  detail.classList.remove("hidden");
-
-  detail.innerHTML = `
-    <h2>${ev.title}</h2>
-    <p>${ev.event_date} – ${ev.event_time}</p>
-    <p>${ev.location}</p>
-    <p><strong>Participants :</strong> ${count}</p>
-
-    <h3>S'inscrire</h3>
-    <div>
-      <input id="p-name" placeholder="Nom" />
-      <input id="p-contact" placeholder="Téléphone ou Email" />
-      <select id="p-type">
-        <option value="phone">Téléphone</option>
-        <option value="email">Email</option>
-      </select>
-      <button onclick="register(${JSON.stringify(eventId)})">Valider</button>
-    </div>
-  `;
-}
-
-
-//---------------------------------------------------
-// Enregistrement d’un participant
-//---------------------------------------------------
-async function register(eventId) {
-  const name = document.getElementById("p-name").value;
-  const contact = document.getElementById("p-contact").value;
-  const type = document.getElementById("p-type").value;
-
-  await sb.from("event_participants").insert({
+  const { error } = await sb.from("event_participants").insert({
     event_id: eventId,
-    name: name,
-    contact: contact,
+    name,
+    contact,
     contact_type: type
   });
 
-  alert("Inscription enregistrée !");
-  loadEventDetail(eventId);
+  if (error) {
+    msg.innerHTML = "Erreur.";
+    msg.style.color = "red";
+    return;
+  }
+
+  msg.innerHTML = "Inscription enregistrée.";
+  msg.style.color = "lightgreen";
 }
 
+async function createEvent() {
+  const title = evTitle.value.trim();
+  const date = evDate.value;
+  const time = evTime.value;
+  const location = evLocation.value.trim();
+  const desc = evDesc.value.trim();
 
-//---------------------------------------------------
-// Ajout d’un événement
-//---------------------------------------------------
-document.getElementById("btn-add-event").onclick = () => {
-  document.getElementById("add-event-form").classList.toggle("hidden");
-};
+  const msg = document.getElementById("msgCreate");
 
-document.getElementById("save-event").onclick = async () => {
-  const title = document.getElementById("ev-title").value;
-  const date = document.getElementById("ev-date").value;
-  const time = document.getElementById("ev-time").value;
-  const loc = document.getElementById("ev-location").value;
+  if (!title || !date) {
+    msg.innerHTML = "Titre + date obligatoires";
+    msg.style.color = "red";
+    return;
+  }
 
-  await sb.from("events").insert({
-    title: title,
+  const { error } = await sb.from("events").insert({
+    title,
     event_date: date,
-    event_time: time,
-    location: loc
+    event_time: time || null,
+    location: location || null,
+    description: desc || null
   });
 
-  alert("Événement ajouté !");
+  if (error) {
+    msg.innerHTML = "Erreur création.";
+    msg.style.color = "red";
+    return;
+  }
+
+  msg.innerHTML = "Événement créé.";
+  msg.style.color = "lightgreen";
+
   loadEvents();
-};
+}
 
-
-// Chargement initial
-loadEvents();
+document.addEventListener("DOMContentLoaded", loadEvents);
