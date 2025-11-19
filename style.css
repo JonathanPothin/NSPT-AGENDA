@@ -1,206 +1,69 @@
-:root {
-  --bg: #0b1020;
-  --panel: #0f172a;
-  --card: #0b1224;
-  --soft: #1f2937;
-  --txt: #e5e7eb;
-  --muted: #9ca3af;
-  --accent: #60a5fa;
-}
-
-/* --------- Base --------- */
-
-* {
-  box-sizing: border-box;
-}
-
 body {
   margin: 0;
-  padding: 0;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  background: radial-gradient(circle at top, #111827 0, #020617 45%, #000 100%);
-  color: var(--txt);
+  padding: 20px;
+  font-family: Arial, sans-serif;
+  background: #0f172a;
+  color: #e5e7eb;
 }
 
-/* --------- Layout principal --------- */
+h1, h2 {
+  text-align: center;
+  color: #60a5fa;
+}
 
 .container {
-  max-width: 900px;
-  margin: 40px auto;
-  padding: 24px 20px 40px;
-  background: rgba(15, 23, 42, 0.9);
-  border-radius: 18px;
-  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.6);
-  border: 1px solid rgba(148, 163, 184, 0.15);
+  max-width: 700px;
+  margin: auto;
 }
 
-/* --------- Titres --------- */
-
-h1 {
-  margin: 0 0 24px;
-  text-align: center;
-  font-size: 1.9rem;
-  letter-spacing: 0.04em;
-  color: #e5e7eb;
+.card {
+  background: #1e293b;
+  padding: 15px;
+  border-radius: 10px;
+  margin-bottom: 20px;
+  border: 1px solid #334155;
 }
 
-h2, h3 {
-  margin-top: 0;
-  color: #e5e7eb;
-}
-
-/* --------- Texte générique --------- */
-
-p {
-  margin: 6px 0;
-  color: var(--muted);
-}
-
-/* --------- Liste d’événements --------- */
-
-#events-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin-bottom: 24px;
-}
-
-.event-item {
-  background: var(--card);
-  border-radius: 12px;
-  padding: 12px 14px;
-  border: 1px solid rgba(148, 163, 184, 0.18);
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  cursor: pointer;
-  transition: transform 0.12s ease-out, box-shadow 0.12s ease-out,
-              border-color 0.12s ease-out, background 0.12s ease-out;
-}
-
-.event-item strong {
-  font-size: 1rem;
-}
-
-.event-item small,
-.event-item span {
-  font-size: 0.85rem;
-  color: var(--muted);
-}
-
-.event-item:hover {
-  transform: translateY(-1px);
-  background: #101726;
-  border-color: var(--accent);
-  box-shadow: 0 12px 20px rgba(15, 23, 42, 0.8);
-}
-
-/* --------- Cartes : détail & formulaire --------- */
-
-#event-detail,
-#add-event-form {
-  background: var(--card);
-  border-radius: 14px;
-  padding: 18px 16px 20px;
-  margin-top: 18px;
-  border: 1px solid rgba(148, 163, 184, 0.25);
-}
-
-#event-detail h2 {
+input, textarea {
+  width: 100%;
+  padding: 10px;
   margin-bottom: 8px;
-}
-
-#event-detail p strong {
+  border-radius: 8px;
+  border: 1px solid #475569;
+  background: #0f172a;
   color: #e5e7eb;
 }
-
-/* --------- Boutons --------- */
 
 button {
-  border: none;
-  border-radius: 999px;
-  padding: 9px 16px;
-  font-size: 0.95rem;
-  font-weight: 500;
-  cursor: pointer;
-  background: var(--accent);
-  color: #0b1020;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.45);
-  transition: transform 0.1s ease-out, box-shadow 0.1s ease-out,
-              background 0.1s ease-out;
-}
-
-button:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 12px 26px rgba(37, 99, 235, 0.55);
-  background: #7cb4ff;
-}
-
-button:active {
-  transform: translateY(0);
-  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.8);
-}
-
-#btn-add-event {
-  margin-top: 8px;
-}
-
-/* --------- Inputs / Select --------- */
-
-input,
-select {
   width: 100%;
-  padding: 9px 11px;
-  margin: 6px 0 10px;
+  padding: 12px;
+  background: #60a5fa;
+  border: none;
+  border-radius: 8px;
+  font-weight: bold;
+  color: #0f172a;
+  cursor: pointer;
+  margin-top: 10px;
+}
+
+.event {
+  background: #1e293b;
+  margin-bottom: 15px;
+  padding: 12px;
   border-radius: 10px;
-  border: 1px solid rgba(148, 163, 184, 0.4);
-  background: #020617;
-  color: var(--txt);
-  font-size: 0.95rem;
-  outline: none;
-  transition: border-color 0.12s ease-out, box-shadow 0.12s ease-out,
-              background 0.12s ease-out;
+  border: 1px solid #334155;
 }
 
-input::placeholder {
-  color: rgba(148, 163, 184, 0.75);
+.event-title {
+  font-size: 1.2rem;
+  font-weight: bold;
 }
 
-input:focus,
-select:focus {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 1px rgba(96, 165, 250, 0.6);
-  background: #020819;
+.event-meta {
+  color: #94a3b8;
+  margin-bottom: 10px;
 }
 
-/* --------- Petits éléments --------- */
-
-.hidden {
-  display: none;
-}
-
-/* Mise en forme légère dans le bloc détail */
-#event-detail .meta-line {
-  font-size: 0.9rem;
-  color: var(--muted);
-}
-
-/* --------- Responsive --------- */
-
-@media (max-width: 600px) {
-  .container {
-    margin: 20px 12px 30px;
-    padding: 18px 14px 26px;
-  }
-
-  h1 {
-    font-size: 1.5rem;
-  }
-
-  .event-item {
-    padding: 10px 11px;
-  }
+.join-card input, .join-card select {
+  margin-bottom: 6px;
 }
