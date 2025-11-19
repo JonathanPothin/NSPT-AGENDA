@@ -1,39 +1,37 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Tassin – Agenda</title>
+  <meta charset="UTF-8">
+  <title>Agenda – Tassin</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
 
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="css/style.css">
+
+  <!-- Supabase -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
+
 <body>
+  <div class="container">
+    <h1>Agenda – Tassin</h1>
 
-<div class="container">
-  <h1>Tassin – Agenda</h1>
+    <h2>Créer un événement</h2>
+    <div class="card">
+      <input id="evTitle" type="text" placeholder="Titre de l’événement">
+      <input id="evDate" type="date">
+      <input id="evTime" type="time">
+      <input id="evLocation" type="text" placeholder="Lieu">
+      <textarea id="evDesc" placeholder="Description (optionnel)"></textarea>
 
-  <!-- Liste -->
-  <div id="events-list"></div>
+      <button onclick="createEvent()">Créer</button>
+      <p id="msgCreate"></p>
+    </div>
 
-  <!-- Détail -->
-  <div id="event-detail" class="hidden"></div>
-
-  <!-- Bouton Ajouter -->
-  <button id="btn-add-event">➕ Ajouter un événement</button>
-
-  <!-- Formulaire ajout événement -->
-  <div id="add-event-form" class="hidden">
-    <h2>Ajouter un événement</h2>
-    <input id="ev-title" placeholder="Titre" />
-    <input id="ev-date" type="date" />
-    <input id="ev-time" type="time" />
-    <input id="ev-location" placeholder="Lieu" />
-    <button id="save-event">Enregistrer</button>
+    <h2>Événements à venir</h2>
+    <div id="events"></div>
   </div>
-</div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
-<script src="supabase.js"></script>
-<script src="app.js"></script>
+  <script src="js/supabase.js"></script>
+  <script src="js/app.js"></script>
 </body>
 </html>
