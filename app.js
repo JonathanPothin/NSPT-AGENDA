@@ -4,7 +4,7 @@ async function loadEvents() {
   const container = document.getElementById("events");
   container.innerHTML = "<p>Chargement...</p>";
 
-  const { data, error } = await sb
+  const { data: events, error } = await sb
     .from("events")
     .select("*")
     .order("event_date", { ascending: true })
@@ -16,14 +16,16 @@ async function loadEvents() {
     return;
   }
 
-  if (!data || data.length === 0) {
+  if (!events || events.length === 0) {
     container.innerHTML = "<p>Aucun événement pour le moment.</p>";
     return;
   }
 
   let html = "";
 
-  data.forEach(ev => {
+  events.forEach(ev => {
+    const count = ev.participant_count || 0;
+
     html += `
       <div class="event">
         <div class="event-title">${ev.title}</div>
@@ -31,6 +33,7 @@ async function loadEvents() {
           📅 ${ev.event_date}
           ${ev.event_time ? " — " + ev.event_time : ""}
           ${ev.location ? "<br>📍 " + ev.location : ""}
+          <br>👥 ${count} inscrit${count > 1 ? "s" : ""}
         </div>
 
         <div class="join-card">
@@ -60,7 +63,7 @@ async function joinEvent(eventId) {
   const phone = (phoneEl?.value || "").trim();
 
   if (!name) {
-    msg.innerHTML = "Merci de remplir au moins le nom.";
+    msg.innerHTML = "Merci de renseigner au moins le nom.";
     msg.style.color = "red";
     return;
   }
@@ -70,7 +73,7 @@ async function joinEvent(eventId) {
   if (email) contact += "email:" + email;
   if (phone) contact += (contact ? " | " : "") + "tel:" + phone;
 
-  // Type de contact (pour les futures notif mail/SMS)
+  // Type de contact (utile plus tard pour mail/SMS)
   let contact_type = null;
   if (email && phone) contact_type = "email+sms";
   else if (email) contact_type = "email";
@@ -79,8 +82,8 @@ async function joinEvent(eventId) {
   const { error } = await sb.from("event_participants").insert({
     event_id: eventId,
     name,
-    contact: contact || null,      // peut être null
-    contact_type: contact_type     // peut être null aussi
+    contact: contact || null,
+    contact_type: contact_type
   });
 
   if (error) {
@@ -96,6 +99,14 @@ async function joinEvent(eventId) {
     msg.innerHTML = "Inscription enregistrée.";
   }
   msg.style.color = "lightgreen";
+
+  // Vide les champs après inscription
+  if (nameEl) nameEl.value = "";
+  if (emailEl) emailEl.value = "";
+  if (phoneEl) phoneEl.value = "";
+
+  // Recharge la liste pour mettre à jour le compteur
+  loadEvents();
 }
 
 // ---------- Création d'un événement ----------
