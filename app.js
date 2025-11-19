@@ -1,3 +1,4 @@
+// Chargement des événements
 async function loadEvents() {
   const container = document.getElementById("events");
   container.innerHTML = "<p>Chargement...</p>";
@@ -9,6 +10,7 @@ async function loadEvents() {
     .order("event_time", { ascending: true });
 
   if (error) {
+    console.error(error);
     container.innerHTML = "<p>Erreur chargement des événements.</p>";
     return;
   }
@@ -49,6 +51,7 @@ async function loadEvents() {
   container.innerHTML = html;
 }
 
+// Inscription à un événement
 async function joinEvent(eventId) {
   const name = document.getElementById("name-" + eventId).value.trim();
   const contact = document.getElementById("contact-" + eventId).value.trim();
@@ -69,16 +72,20 @@ async function joinEvent(eventId) {
   });
 
   if (error) {
-    msg.innerHTML = "Erreur.";
+    console.error(error);
+    msg.innerHTML = "Erreur lors de l'enregistrement.";
     msg.style.color = "red";
     return;
   }
 
   msg.innerHTML = "Inscription enregistrée.";
   msg.style.color = "lightgreen";
+
+  // Ici plus tard : appel d’une Edge Function pour mail/SMS
 }
 
-async function createEvent() {
+// Création d’un événement (renommée pour éviter le conflit)
+async function handleCreateEvent() {
   const title = evTitle.value.trim();
   const date = evDate.value;
   const time = evTime.value;
@@ -102,7 +109,8 @@ async function createEvent() {
   });
 
   if (error) {
-    msg.innerHTML = "Erreur création.";
+    console.error(error);
+    msg.innerHTML = "Erreur lors de la création.";
     msg.style.color = "red";
     return;
   }
@@ -110,7 +118,9 @@ async function createEvent() {
   msg.innerHTML = "Événement créé.";
   msg.style.color = "lightgreen";
 
+  // Recharge la liste
   loadEvents();
 }
 
+// Au chargement de la page, on affiche les événements
 document.addEventListener("DOMContentLoaded", loadEvents);
