@@ -24,7 +24,9 @@ h1, h2 {
   border: 1px solid #334155;
 }
 
-input, textarea {
+input,
+textarea,
+select {
   width: 100%;
   padding: 10px;
   margin-bottom: 8px;
@@ -32,6 +34,10 @@ input, textarea {
   border: 1px solid #475569;
   background: #0f172a;
   color: #e5e7eb;
+}
+
+textarea {
+  min-height: 80px;
 }
 
 button {
@@ -44,6 +50,10 @@ button {
   color: #0f172a;
   cursor: pointer;
   margin-top: 10px;
+}
+
+button:hover {
+  opacity: 0.9;
 }
 
 .event {
@@ -64,6 +74,17 @@ button {
   margin-bottom: 10px;
 }
 
-.join-card input, .join-card select {
+.join-card {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #334155;
+}
+
+.join-card input {
   margin-bottom: 6px;
+}
+
+#msgCreate {
+  font-size: 0.9rem;
+  margin-top: 6px;
 }
