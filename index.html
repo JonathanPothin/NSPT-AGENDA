@@ -1,23 +1,38 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Tassin – Agenda</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
 
   <link rel="stylesheet" href="style.css">
-
-  <!-- Supabase library -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-  <div class="container">
-    <h1>Tassin – Agenda</h1>
 
-    <div id="events"></div>
+<div class="container">
+  <h1>Tassin – Agenda</h1>
+
+  <!-- Liste -->
+  <div id="events-list"></div>
+
+  <!-- Détail -->
+  <div id="event-detail" class="hidden"></div>
+
+  <!-- Bouton Ajouter -->
+  <button id="btn-add-event">➕ Ajouter un événement</button>
+
+  <!-- Formulaire ajout événement -->
+  <div id="add-event-form" class="hidden">
+    <h2>Ajouter un événement</h2>
+    <input id="ev-title" placeholder="Titre" />
+    <input id="ev-date" type="date" />
+    <input id="ev-time" type="time" />
+    <input id="ev-location" placeholder="Lieu" />
+    <button id="save-event">Enregistrer</button>
   </div>
+</div>
 
-  <script src="supabase.js"></script>
-  <script src="app.js"></script>
+<script src="supabase.js"></script>
+<script src="app.js"></script>
 </body>
 </html>
