@@ -1,8 +1,12 @@
 // ===========================
 // NSPT AGENDA - app.js
 // ===========================
+
+// Adresse mail à notifier à chaque création d’événement
+const NOTIFY_EMAIL = "jpothin69@outlook.com";
+
 // ---------------------------------------------------------------------------
-// 1. Chargement et affichage des événements
+// 1. Chargement des événements depuis Supabase
 // ---------------------------------------------------------------------------
 
 async function loadEvents() {
@@ -22,12 +26,13 @@ async function loadEvents() {
 
   if (error) {
     console.error("Erreur chargement événements :", error);
-    container.innerHTML = "<p>Erreur lors du chargement des événements.</p>";
+    container.innerHTML =
+      "<p>Erreur lors du chargement des événements.</p>";
     return;
   }
 
   if (!events || events.length === 0) {
-    container.innerHTML = "<p>Aucun événement à venir.</p>";
+    container.innerHTML = "<p>Aucun événement à venir pour le moment.</p>";
     return;
   }
 
@@ -52,7 +57,11 @@ function renderEvents(events, container) {
         <p class="event-meta">
           <span>${date}</span>
           ${time ? `&nbsp;•&nbsp;<span>${time}</span>` : ""}
-          ${location ? `&nbsp;•&nbsp;<span>${escapeHtml(location)}</span>` : ""}
+          ${
+            location
+              ? `&nbsp;•&nbsp;<span>${escapeHtml(location)}</span>`
+              : ""
+          }
         </p>
         ${
           description
@@ -66,7 +75,6 @@ function renderEvents(events, container) {
   container.innerHTML = html;
 }
 
-// Petite fonction pour éviter d'injecter n'importe quoi dans le HTML
 function escapeHtml(str) {
   return String(str)
     .replace(/&/g, "&amp;")
@@ -77,7 +85,7 @@ function escapeHtml(str) {
 }
 
 // ---------------------------------------------------------------------------
-// 2. Appel de la Edge Function sendEmail (Brevo) via Supabase
+// 2. Edge Function sendEmail (Brevo) via Supabase
 // ---------------------------------------------------------------------------
 
 async function sendEmail(to, subject, htmlContent) {
@@ -91,7 +99,7 @@ async function sendEmail(to, subject, htmlContent) {
       throw error;
     }
 
-    console.log("Réponse sendEmail :", data);
+    console.log("Email envoyé :", data);
     return data;
   } catch (err) {
     console.error("Erreur globale sendEmail :", err);
@@ -100,61 +108,97 @@ async function sendEmail(to, subject, htmlContent) {
 }
 
 // ---------------------------------------------------------------------------
-// 3. Gestion du formulaire d’inscription / contact
+// 3. Création d’un événement (bouton "Créer")
 // ---------------------------------------------------------------------------
-// Adapte les IDs (#inscription-form, #email, #name, etc.) à ton HTML
 
-function initForms() {
-  const form = document.getElementById("inscription-form");
-  if (!form) {
-    console.warn("Aucun formulaire avec l'id 'inscription-form' trouvé.");
+async function handleCreateEvent() {
+  const titleInput = document.getElementById("evTitle");
+  const dateInput = document.getElementById("evDate");
+  const timeInput = document.getElementById("evTime");
+  const locationInput = document.getElementById("evLocation");
+  const descInput = document.getElementById("evDesc");
+  const msgCreate = document.getElementById("msgCreate");
+
+  const title = titleInput.value.trim();
+  const date = dateInput.value; // format YYYY-MM-DD
+  const time = timeInput.value; // format HH:MM
+  const location = locationInput.value.trim();
+  const description = descInput.value.trim();
+
+  // Validation basique
+  if (!title || !date || !time) {
+    msgCreate.textContent = "Merci de remplir au minimum titre, date et heure.";
+    msgCreate.style.color = "#f97373";
     return;
   }
 
-  const emailInput = form.querySelector("#email");
-  const nameInput = form.querySelector("#name"); // optionnel
-  const messageInput = form.querySelector("#message"); // optionnel
+  msgCreate.textContent = "Création en cours...";
+  msgCreate.style.color = "#9ca3af";
 
-  form.addEventListener("submit", async (e) => {
-    e.preventDefault();
+  // Insertion dans la table "events"
+  const { error } = await sb.from("events").insert([
+    {
+      title,
+      event_date: date,
+      event_time: time,
+      location,
+      description,
+    },
+  ]);
 
-    const email = emailInput ? emailInput.value.trim() : "";
-    const name = nameInput ? nameInput.value.trim() : "";
-    const message = messageInput ? messageInput.value.trim() : "";
+  if (error) {
+    console.error("Erreur insertion événement :", error);
+    msgCreate.textContent =
+      "Erreur lors de la création de l’événement.";
+    msgCreate.style.color = "#f97373";
+    return;
+  }
 
-    if (!email) {
-      alert("Merci de renseigner votre adresse e-mail.");
-      return;
-    }
+  msgCreate.textContent = "Événement créé avec succès ✅";
+  msgCreate.style.color = "#4ade80";
 
-    // Tu peux customiser ici le sujet + contenu HTML
-    const subject = "Confirmation de votre inscription à l’agenda NSPT";
+  // Nettoyage du formulaire
+  titleInput.value = "";
+  dateInput.value = "";
+  timeInput.value = "";
+  locationInput.value = "";
+  descInput.value = "";
 
+  // Recharger la liste des événements
+  loadEvents();
+
+  // Envoi de l’e-mail de notification (à toi)
+  try {
+    const subject = `Nouvel événement créé : ${title}`;
     const htmlContent = `
-      <p>Bonjour${name ? " " + escapeHtml(name) : ""},</p>
-      <p>Merci pour votre inscription à l’agenda NSPT.</p>
+      <p>Un nouvel événement a été créé dans l’agenda Tassin :</p>
+      <ul>
+        <li><strong>Titre :</strong> ${escapeHtml(title)}</li>
+        <li><strong>Date :</strong> ${new Date(
+          date
+        ).toLocaleDateString("fr-FR")}</li>
+        <li><strong>Heure :</strong> ${time}</li>
+        ${
+          location
+            ? `<li><strong>Lieu :</strong> ${escapeHtml(location)}</li>`
+            : ""
+        }
+      </ul>
       ${
-        message
-          ? `<p>Message envoyé :</p><p>${escapeHtml(message)}</p>`
+        description
+          ? `<p><strong>Description :</strong><br>${escapeHtml(
+              description
+            )}</p>`
           : ""
       }
-      <p>À bientôt,</p>
-      <p>L’équipe NSPT</p>
+      <p>– Agenda NSPT</p>
     `;
 
-    // Optionnel : afficher un loader
-    form.classList.add("is-loading");
-
-    try {
-      await sendEmail(email, subject, htmlContent);
-      alert("Votre inscription est prise en compte. Un e-mail vous a été envoyé.");
-      form.reset();
-    } catch (err) {
-      alert("Une erreur est survenue lors de l’envoi de l’e-mail.");
-    } finally {
-      form.classList.remove("is-loading");
-    }
-  });
+    await sendEmail(NOTIFY_EMAIL, subject, htmlContent);
+  } catch (err) {
+    console.error("Erreur lors de l’envoi du mail de notification :", err);
+    // On ne bloque pas l’utilisateur pour ça, l'événement est bien créé
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -162,6 +206,6 @@ function initForms() {
 // ---------------------------------------------------------------------------
 
 document.addEventListener("DOMContentLoaded", () => {
+  console.log("Supabase connecté (front)");
   loadEvents();
-  initForms();
 });
