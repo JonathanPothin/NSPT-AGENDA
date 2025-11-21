@@ -1,25 +1,18 @@
 // ===========================
 // NSPT AGENDA - app.js
 // ===========================
-
-// URL de ta Edge Function Supabase (à adapter)
-// Exemple : https://xxxxx.supabase.co/functions/v1/notify-participant
-const NOTIFY_ENDPOINT = "https://TON-PROJET.supabase.co/functions/v1/notify-participant";
-
-// ---------- Utilitaire pour formatage date/heure ----------
-function formatEventDate(ev) {
-  const dateTxt = ev.event_date || "";
-  const timeTxt = ev.event_time ? ` — ${ev.event_time}` : "";
-  return dateTxt + timeTxt;
-}
-
-// ================== CHARGEMENT DES ÉVÉNEMENTS ==================
+// ---------------------------------------------------------------------------
+// 1. Chargement et affichage des événements
+// ---------------------------------------------------------------------------
 
 async function loadEvents() {
   const container = document.getElementById("events");
-  if (!container) return;
+  if (!container) {
+    console.warn("Aucun élément avec l'id 'events' trouvé.");
+    return;
+  }
 
-  container.innerHTML = "<p>Chargement...</p>";
+  container.innerHTML = "<p>Chargement des événements...</p>";
 
   const { data: events, error } = await sb
     .from("events")
@@ -28,224 +21,147 @@ async function loadEvents() {
     .order("event_time", { ascending: true });
 
   if (error) {
-    console.error(error);
-    container.innerHTML = "<p>Erreur chargement des événements.</p>";
+    console.error("Erreur chargement événements :", error);
+    container.innerHTML = "<p>Erreur lors du chargement des événements.</p>";
     return;
   }
 
   if (!events || events.length === 0) {
-    container.innerHTML = "<p>Aucun événement pour le moment.</p>";
+    container.innerHTML = "<p>Aucun événement à venir.</p>";
     return;
   }
 
+  renderEvents(events, container);
+}
+
+function renderEvents(events, container) {
   let html = "";
 
-  events.forEach((ev) => {
-    const count = ev.participant_count || 0;
+  events.forEach((event) => {
+    const date = event.event_date
+      ? new Date(event.event_date).toLocaleDateString("fr-FR")
+      : "";
+    const time = event.event_time ? event.event_time.slice(0, 5) : ""; // HH:MM
+    const title = event.title || "Événement";
+    const description = event.description || "";
+    const location = event.location || "";
 
     html += `
-      <div class="event">
-        <div class="event-title">${ev.title}</div>
-        <div class="event-meta">
-          📅 ${formatEventDate(ev)}
-          ${ev.location ? "<br>📍 " + ev.location : ""}
-          <br>👥 ${count} inscrit${count > 1 ? "s" : ""}
-        </div>
-
-        <div class="join-card">
-          <input type="text" id="name-${ev.id}" placeholder="Nom">
-          <input type="email" id="email-${ev.id}" placeholder="Email (optionnel)">
-          <input type="tel" id="phone-${ev.id}" placeholder="Téléphone (optionnel)">
-          <button
-            data-title="${ev.title}"
-            data-date="${ev.event_date}"
-            data-time="${ev.event_time || ""}"
-            data-location="${ev.location || ""}"
-            onclick="joinEvent('${ev.id}', this)"
-          >
-            Je participe
-          </button>
-          <p id="msg-${ev.id}"></p>
-        </div>
-      </div>
+      <article class="event-card">
+        <h3 class="event-title">${escapeHtml(title)}</h3>
+        <p class="event-meta">
+          <span>${date}</span>
+          ${time ? `&nbsp;•&nbsp;<span>${time}</span>` : ""}
+          ${location ? `&nbsp;•&nbsp;<span>${escapeHtml(location)}</span>` : ""}
+        </p>
+        ${
+          description
+            ? `<p class="event-description">${escapeHtml(description)}</p>`
+            : ""
+        }
+      </article>
     `;
   });
 
   container.innerHTML = html;
 }
 
-// ================== INSCRIPTION À UN ÉVÉNEMENT ==================
+// Petite fonction pour éviter d'injecter n'importe quoi dans le HTML
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
 
-async function joinEvent(eventId, btn) {
-  const nameEl  = document.getElementById("name-" + eventId);
-  const emailEl = document.getElementById("email-" + eventId);
-  const phoneEl = document.getElementById("phone-" + eventId);
-  const msg     = document.getElementById("msg-" + eventId);
+// ---------------------------------------------------------------------------
+// 2. Appel de la Edge Function sendEmail (Brevo) via Supabase
+// ---------------------------------------------------------------------------
 
-  const name  = (nameEl?.value || "").trim();
-  const email = (emailEl?.value || "").trim();
-  const phone = (phoneEl?.value || "").trim();
-
-  if (!name) {
-    msg.innerHTML = "Merci de renseigner au moins le nom.";
-    msg.style.color = "red";
-    return;
-  }
-
-  // Construit un champ contact lisible pour vous
-  let contact = "";
-  if (email) contact += "email:" + email;
-  if (phone) contact += (contact ? " | " : "") + "tel:" + phone;
-
-  // Type de contact (détermine ce qu'on enverra côté Edge Function)
-  let contact_type = null;
-  if (email && phone) contact_type = "email+sms";
-  else if (email)     contact_type = "email";
-  else if (phone)     contact_type = "sms";
-
-  // 1) Enregistrement dans Supabase
-  const { error } = await sb.from("event_participants").insert({
-    event_id: eventId,
-    name,
-    contact: contact || null,
-    contact_type
-  });
-
-  if (error) {
-    console.error(error);
-    msg.innerHTML = "Erreur lors de l'enregistrement.";
-    msg.style.color = "red";
-    return;
-  }
-
-  // 2) Prépare les infos d'événement pour la notification
-  const d = btn?.dataset || {};
-  const eventInfos = {
-    id: eventId,
-    title: d.title || "",
-    date: d.date || "",
-    time: d.time || "",
-    location: d.location || ""
-  };
-
-  // 3) Appel de l'Edge Function pour :
-  //    - envoyer la confirmation immédiate
-  //    - programmer le rappel J-1 (côté serveur)
+async function sendEmail(to, subject, htmlContent) {
   try {
-    await notifyParticipant({
-      name,
-      email,
-      phone,
-      contact_type,
-      event: eventInfos
+    const { data, error } = await sb.functions.invoke("sendEmail", {
+      body: { to, subject, htmlContent },
     });
-  } catch (e) {
-    console.error("Erreur appel notifyParticipant:", e);
-    // on ne bloque pas l'inscription si la notif plante
+
+    if (error) {
+      console.error("Erreur envoi email (Edge Function) :", error);
+      throw error;
+    }
+
+    console.log("Réponse sendEmail :", data);
+    return data;
+  } catch (err) {
+    console.error("Erreur globale sendEmail :", err);
+    throw err;
   }
-
-  // 4) Message de confirmation sur la page
-  if (!contact) {
-    msg.innerHTML = "Inscription enregistrée (sans moyen de contact).";
-  } else {
-    msg.innerHTML = "Inscription enregistrée.";
-  }
-  msg.style.color = "lightgreen";
-
-  // 5) Vide les champs
-  if (nameEl)  nameEl.value  = "";
-  if (emailEl) emailEl.value = "";
-  if (phoneEl) phoneEl.value = "";
-
-  // 6) Recharge pour mettre à jour le compteur
-  loadEvents();
 }
 
-// ================== APPEL EDGE FUNCTION ==================
+// ---------------------------------------------------------------------------
+// 3. Gestion du formulaire d’inscription / contact
+// ---------------------------------------------------------------------------
+// Adapte les IDs (#inscription-form, #email, #name, etc.) à ton HTML
 
-async function notifyParticipant(payload) {
-  if (!NOTIFY_ENDPOINT) {
-    console.warn("NOTIFY_ENDPOINT non configuré, aucune notification envoyée.");
+function initForms() {
+  const form = document.getElementById("inscription-form");
+  if (!form) {
+    console.warn("Aucun formulaire avec l'id 'inscription-form' trouvé.");
     return;
   }
 
-  // payload = {
-  //   name, email, phone, contact_type,
-  //   event: { id, title, date, time, location }
-  // }
+  const emailInput = form.querySelector("#email");
+  const nameInput = form.querySelector("#name"); // optionnel
+  const messageInput = form.querySelector("#message"); // optionnel
 
-  const res = await fetch(NOTIFY_ENDPOINT, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-      // pas de clé ici, l'Edge Function est publique ou protégée par autre chose
-    },
-    body: JSON.stringify(payload)
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const email = emailInput ? emailInput.value.trim() : "";
+    const name = nameInput ? nameInput.value.trim() : "";
+    const message = messageInput ? messageInput.value.trim() : "";
+
+    if (!email) {
+      alert("Merci de renseigner votre adresse e-mail.");
+      return;
+    }
+
+    // Tu peux customiser ici le sujet + contenu HTML
+    const subject = "Confirmation de votre inscription à l’agenda NSPT";
+
+    const htmlContent = `
+      <p>Bonjour${name ? " " + escapeHtml(name) : ""},</p>
+      <p>Merci pour votre inscription à l’agenda NSPT.</p>
+      ${
+        message
+          ? `<p>Message envoyé :</p><p>${escapeHtml(message)}</p>`
+          : ""
+      }
+      <p>À bientôt,</p>
+      <p>L’équipe NSPT</p>
+    `;
+
+    // Optionnel : afficher un loader
+    form.classList.add("is-loading");
+
+    try {
+      await sendEmail(email, subject, htmlContent);
+      alert("Votre inscription est prise en compte. Un e-mail vous a été envoyé.");
+      form.reset();
+    } catch (err) {
+      alert("Une erreur est survenue lors de l’envoi de l’e-mail.");
+    } finally {
+      form.classList.remove("is-loading");
+    }
   });
-
-  if (!res.ok) {
-    const txt = await res.text();
-    console.error("Erreur Edge Function notify-participant:", res.status, txt);
-  }
 }
 
-// ================== CRÉATION D'UN ÉVÉNEMENT ==================
-
-async function handleCreateEvent() {
-  const titleEl = document.getElementById("evTitle");
-  const dateEl  = document.getElementById("evDate");
-  const timeEl  = document.getElementById("evTime");
-  const locEl   = document.getElementById("evLocation");
-  const descEl  = document.getElementById("evDesc");
-  const msg     = document.getElementById("msgCreate");
-
-  const title = (titleEl?.value || "").trim();
-  const date  = dateEl?.value || "";
-  const time  = timeEl?.value || "";
-  const loc   = (locEl?.value || "").trim();
-  const desc  = (descEl?.value || "").trim();
-
-  if (!title || !date) {
-    msg.innerHTML = "Titre + date obligatoires.";
-    msg.style.color = "red";
-    return;
-  }
-
-  const { error } = await sb.from("events").insert({
-    title,
-    event_date: date,
-    event_time: time || null,
-    location: loc || null,
-    description: desc || null
-  });
-
-  if (error) {
-    console.error(error);
-    msg.innerHTML = "Erreur lors de la création.";
-    msg.style.color = "red";
-    return;
-  }
-
-  msg.innerHTML = "Événement créé.";
-  msg.style.color = "lightgreen";
-
-  // Reset formulaire
-  if (titleEl) titleEl.value = "";
-  if (dateEl)  dateEl.value  = "";
-  if (timeEl)  timeEl.value  = "";
-  if (locEl)   locEl.value   = "";
-  if (descEl)  descEl.value  = "";
-
-  loadEvents();
-}
-
-// ================== INITIALISATION ==================
+// ---------------------------------------------------------------------------
+// 4. Initialisation au chargement de la page
+// ---------------------------------------------------------------------------
 
 document.addEventListener("DOMContentLoaded", () => {
   loadEvents();
-
-  const btnCreate = document.getElementById("btnCreate");
-  if (btnCreate) {
-    btnCreate.addEventListener("click", handleCreateEvent);
-  }
+  initForms();
 });
