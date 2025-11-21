@@ -2,21 +2,22 @@
 // NSPT AGENDA - app.js
 // ===========================
 
-// Adresse mail à notifier à chaque création d’événement
-const NOTIFY_EMAIL = "jpothin69@outlook.com";
+const NOTIFY_ENDPOINT = "https://TON-PROJET.supabase.co/functions/v1/notify-participant";
 
-// ---------------------------------------------------------------------------
-// 1. Chargement des événements depuis Supabase
-// ---------------------------------------------------------------------------
+// ---------- Utilitaire pour formatage date/heure ----------
+function formatEventDate(ev) {
+  const dateTxt = ev.event_date || "";
+  const timeTxt = ev.event_time ? ` — ${ev.event_time}` : "";
+  return dateTxt + timeTxt;
+}
+
+// ================== CHARGEMENT DES ÉVÉNEMENTS ==================
 
 async function loadEvents() {
   const container = document.getElementById("events");
-  if (!container) {
-    console.warn("Aucun élément avec l'id 'events' trouvé.");
-    return;
-  }
+  if (!container) return;
 
-  container.innerHTML = "<p>Chargement des événements...</p>";
+  container.innerHTML = "<p>Chargement...</p>";
 
   const { data: events, error } = await sb
     .from("events")
@@ -25,187 +26,224 @@ async function loadEvents() {
     .order("event_time", { ascending: true });
 
   if (error) {
-    console.error("Erreur chargement événements :", error);
-    container.innerHTML =
-      "<p>Erreur lors du chargement des événements.</p>";
+    console.error(error);
+    container.innerHTML = "<p>Erreur chargement des événements.</p>";
     return;
   }
 
   if (!events || events.length === 0) {
-    container.innerHTML = "<p>Aucun événement à venir pour le moment.</p>";
+    container.innerHTML = "<p>Aucun événement pour le moment.</p>";
     return;
   }
 
-  renderEvents(events, container);
-}
-
-function renderEvents(events, container) {
   let html = "";
 
-  events.forEach((event) => {
-    const date = event.event_date
-      ? new Date(event.event_date).toLocaleDateString("fr-FR")
-      : "";
-    const time = event.event_time ? event.event_time.slice(0, 5) : ""; // HH:MM
-    const title = event.title || "Événement";
-    const description = event.description || "";
-    const location = event.location || "";
+  events.forEach((ev) => {
+    const count = ev.participant_count || 0;
 
     html += `
-      <article class="event-card">
-        <h3 class="event-title">${escapeHtml(title)}</h3>
-        <p class="event-meta">
-          <span>${date}</span>
-          ${time ? `&nbsp;•&nbsp;<span>${time}</span>` : ""}
-          ${
-            location
-              ? `&nbsp;•&nbsp;<span>${escapeHtml(location)}</span>`
-              : ""
-          }
-        </p>
-        ${
-          description
-            ? `<p class="event-description">${escapeHtml(description)}</p>`
-            : ""
-        }
-      </article>
+      <div class="event">
+        <div class="event-title">${ev.title}</div>
+        <div class="event-meta">
+          📅 ${formatEventDate(ev)}
+          ${ev.location ? "<br>📍 " + ev.location : ""}
+          <br>👥 ${count} inscrit${count > 1 ? "s" : ""}
+        </div>
+
+        <div class="join-card">
+          <input type="text" id="name-${ev.id}" placeholder="Nom">
+          <input type="email" id="email-${ev.id}" placeholder="Email (optionnel)">
+          <input type="tel" id="phone-${ev.id}" placeholder="Téléphone (optionnel)">
+          <button
+            data-title="${ev.title}"
+            data-date="${ev.event_date}"
+            data-time="${ev.event_time || ""}"
+            data-location="${ev.location || ""}"
+            onclick="joinEvent('${ev.id}', this)"
+          >
+            Je participe
+          </button>
+          <p id="msg-${ev.id}"></p>
+        </div>
+      </div>
     `;
   });
 
   container.innerHTML = html;
 }
 
-function escapeHtml(str) {
-  return String(str)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
-}
+// ================== INSCRIPTION À UN ÉVÉNEMENT ==================
 
-// ---------------------------------------------------------------------------
-// 2. Edge Function sendEmail (Brevo) via Supabase
-// ---------------------------------------------------------------------------
+async function joinEvent(eventId, btn) {
+  const nameEl  = document.getElementById("name-" + eventId);
+  const emailEl = document.getElementById("email-" + eventId);
+  const phoneEl = document.getElementById("phone-" + eventId);
+  const msg     = document.getElementById("msg-" + eventId);
 
-async function sendEmail(to, subject, htmlContent) {
-  try {
-    const { data, error } = await sb.functions.invoke("sendEmail", {
-      body: { to, subject, htmlContent },
-    });
+  const name  = (nameEl?.value || "").trim();
+  const email = (emailEl?.value || "").trim();
+  const phone = (phoneEl?.value || "").trim();
 
-    if (error) {
-      console.error("Erreur envoi email (Edge Function) :", error);
-      throw error;
-    }
-
-    console.log("Email envoyé :", data);
-    return data;
-  } catch (err) {
-    console.error("Erreur globale sendEmail :", err);
-    throw err;
-  }
-}
-
-// ---------------------------------------------------------------------------
-// 3. Création d’un événement (bouton "Créer")
-// ---------------------------------------------------------------------------
-
-async function handleCreateEvent() {
-  const titleInput = document.getElementById("evTitle");
-  const dateInput = document.getElementById("evDate");
-  const timeInput = document.getElementById("evTime");
-  const locationInput = document.getElementById("evLocation");
-  const descInput = document.getElementById("evDesc");
-  const msgCreate = document.getElementById("msgCreate");
-
-  const title = titleInput.value.trim();
-  const date = dateInput.value; // format YYYY-MM-DD
-  const time = timeInput.value; // format HH:MM
-  const location = locationInput.value.trim();
-  const description = descInput.value.trim();
-
-  // Validation basique
-  if (!title || !date || !time) {
-    msgCreate.textContent = "Merci de remplir au minimum titre, date et heure.";
-    msgCreate.style.color = "#f97373";
+  if (!name) {
+    msg.innerHTML = "Merci de renseigner au moins le nom.";
+    msg.style.color = "red";
     return;
   }
 
-  msgCreate.textContent = "Création en cours...";
-  msgCreate.style.color = "#9ca3af";
+  // Construit un champ contact lisible pour vous
+  let contact = "";
+  if (email) contact += "email:" + email;
+  if (phone) contact += (contact ? " | " : "") + "tel:" + phone;
 
-  // Insertion dans la table "events"
-  const { error } = await sb.from("events").insert([
-    {
-      title,
-      event_date: date,
-      event_time: time,
-      location,
-      description,
-    },
-  ]);
+  // Type de contact (détermine ce qu'on enverra côté Edge Function)
+  let contact_type = null;
+  if (email && phone) contact_type = "email+sms";
+  else if (email)     contact_type = "email";
+  else if (phone)     contact_type = "sms";
+
+  // 1) Enregistrement dans Supabase
+  const { error } = await sb.from("event_participants").insert({
+    event_id: eventId,
+    name,
+    contact: contact || null,
+    contact_type
+  });
 
   if (error) {
-    console.error("Erreur insertion événement :", error);
-    msgCreate.textContent =
-      "Erreur lors de la création de l’événement.";
-    msgCreate.style.color = "#f97373";
+    console.error(error);
+    msg.innerHTML = "Erreur lors de l'enregistrement.";
+    msg.style.color = "red";
     return;
   }
 
-  msgCreate.textContent = "Événement créé avec succès ✅";
-  msgCreate.style.color = "#4ade80";
+  // 2) Prépare les infos d'événement pour la notification
+  const d = btn?.dataset || {};
+  const eventInfos = {
+    id: eventId,
+    title: d.title || "",
+    date: d.date || "",
+    time: d.time || "",
+    location: d.location || ""
+  };
 
-  // Nettoyage du formulaire
-  titleInput.value = "";
-  dateInput.value = "";
-  timeInput.value = "";
-  locationInput.value = "";
-  descInput.value = "";
-
-  // Recharger la liste des événements
-  loadEvents();
-
-  // Envoi de l’e-mail de notification (à toi)
+  // 3) Appel de l'Edge Function pour :
+  //    - envoyer la confirmation immédiate
+  //    - programmer le rappel J-1 (côté serveur)
   try {
-    const subject = `Nouvel événement créé : ${title}`;
-    const htmlContent = `
-      <p>Un nouvel événement a été créé dans l’agenda Tassin :</p>
-      <ul>
-        <li><strong>Titre :</strong> ${escapeHtml(title)}</li>
-        <li><strong>Date :</strong> ${new Date(
-          date
-        ).toLocaleDateString("fr-FR")}</li>
-        <li><strong>Heure :</strong> ${time}</li>
-        ${
-          location
-            ? `<li><strong>Lieu :</strong> ${escapeHtml(location)}</li>`
-            : ""
-        }
-      </ul>
-      ${
-        description
-          ? `<p><strong>Description :</strong><br>${escapeHtml(
-              description
-            )}</p>`
-          : ""
-      }
-      <p>– Agenda NSPT</p>
-    `;
+    await notifyParticipant({
+      name,
+      email,
+      phone,
+      contact_type,
+      event: eventInfos
+    });
+  } catch (e) {
+    console.error("Erreur appel notifyParticipant:", e);
+    // on ne bloque pas l'inscription si la notif plante
+  }
 
-    await sendEmail(NOTIFY_EMAIL, subject, htmlContent);
-  } catch (err) {
-    console.error("Erreur lors de l’envoi du mail de notification :", err);
-    // On ne bloque pas l’utilisateur pour ça, l'événement est bien créé
+  // 4) Message de confirmation sur la page
+  if (!contact) {
+    msg.innerHTML = "Inscription enregistrée (sans moyen de contact).";
+  } else {
+    msg.innerHTML = "Inscription enregistrée.";
+  }
+  msg.style.color = "lightgreen";
+
+  // 5) Vide les champs
+  if (nameEl)  nameEl.value  = "";
+  if (emailEl) emailEl.value = "";
+  if (phoneEl) phoneEl.value = "";
+
+  // 6) Recharge pour mettre à jour le compteur
+  loadEvents();
+}
+
+// ================== APPEL EDGE FUNCTION ==================
+
+async function notifyParticipant(payload) {
+  if (!NOTIFY_ENDPOINT) {
+    console.warn("NOTIFY_ENDPOINT non configuré, aucune notification envoyée.");
+    return;
+  }
+
+  // payload = {
+  //   name, email, phone, contact_type,
+  //   event: { id, title, date, time, location }
+  // }
+
+  const res = await fetch(NOTIFY_ENDPOINT, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+      // pas de clé ici, l'Edge Function est publique ou protégée par autre chose
+    },
+    body: JSON.stringify(payload)
+  });
+
+  if (!res.ok) {
+    const txt = await res.text();
+    console.error("Erreur Edge Function notify-participant:", res.status, txt);
   }
 }
 
-// ---------------------------------------------------------------------------
-// 4. Initialisation au chargement de la page
-// ---------------------------------------------------------------------------
+// ================== CRÉATION D'UN ÉVÉNEMENT ==================
+
+async function handleCreateEvent() {
+  const titleEl = document.getElementById("evTitle");
+  const dateEl  = document.getElementById("evDate");
+  const timeEl  = document.getElementById("evTime");
+  const locEl   = document.getElementById("evLocation");
+  const descEl  = document.getElementById("evDesc");
+  const msg     = document.getElementById("msgCreate");
+
+  const title = (titleEl?.value || "").trim();
+  const date  = dateEl?.value || "";
+  const time  = timeEl?.value || "";
+  const loc   = (locEl?.value || "").trim();
+  const desc  = (descEl?.value || "").trim();
+
+  if (!title || !date) {
+    msg.innerHTML = "Titre + date obligatoires.";
+    msg.style.color = "red";
+    return;
+  }
+
+  const { error } = await sb.from("events").insert({
+    title,
+    event_date: date,
+    event_time: time || null,
+    location: loc || null,
+    description: desc || null
+  });
+
+  if (error) {
+    console.error(error);
+    msg.innerHTML = "Erreur lors de la création.";
+    msg.style.color = "red";
+    return;
+  }
+
+  msg.innerHTML = "Événement créé.";
+  msg.style.color = "lightgreen";
+
+  // Reset formulaire
+  if (titleEl) titleEl.value = "";
+  if (dateEl)  dateEl.value  = "";
+  if (timeEl)  timeEl.value  = "";
+  if (locEl)   locEl.value   = "";
+  if (descEl)  descEl.value  = "";
+
+  loadEvents();
+}
+
+// ================== INITIALISATION ==================
 
 document.addEventListener("DOMContentLoaded", () => {
-  console.log("Supabase connecté (front)");
   loadEvents();
+
+  const btnCreate = document.getElementById("btnCreate");
+  if (btnCreate) {
+    btnCreate.addEventListener("click", handleCreateEvent);
+  }
 });
