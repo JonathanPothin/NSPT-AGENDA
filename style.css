@@ -1,0 +1,144 @@
+/* Pour que padding + border soient inclus dans la largeur */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 20px;
+  font-family: Arial, sans-serif;
+  background: #0f172a;
+  color: #e5e7eb;
+}
+
+/* Un peu moins de padding sur petit écran */
+@media (max-width: 480px) {
+  body {
+    padding: 12px;
+  }
+}
+
+h1,
+h2 {
+  text-align: center;
+  color: #60a5fa;
+}
+
+.container {
+  max-width: 700px;
+  margin: auto;
+}
+
+.card {
+  background: #1e293b;
+  padding: 15px;
+  border-radius: 10px;
+  margin-bottom: 20px;
+  border: 1px solid #334155;
+}
+
+/* Champs de formulaire */
+input,
+textarea,
+select {
+  width: 100%;
+  padding: 10px;
+  margin: 8px 0;                /* espace en haut ET en bas */
+  border-radius: 8px;
+  border: 1px solid #475569;
+  background: #0f172a;
+  color: #e5e7eb;
+}
+
+/* === FIX SPÉCIAL pour les champs DATE & HEURE (iPhone / Safari) === */
+input[type="date"],
+input[type="time"] {
+  appearance: none;
+  -webkit-appearance: none;     /* bloque le style natif Safari */
+  width: 100%;
+  max-width: 100%;
+  padding: 10px;
+  margin: 8px 0;
+  border-radius: 8px;
+  border: 1px solid #475569;
+  background: #0f172a;
+  color: #e5e7eb;
+  font-size: 16px;
+  height: 44px;                 /* même hauteur que les autres */
+  line-height: 22px;
+  color-scheme: dark;           /* picker iOS en mode sombre */
+}
+
+/* évite que le texte interne déborde à droite */
+input[type="date"]::-webkit-date-and-time-value,
+input[type="time"]::-webkit-date-and-time-value {
+  margin: 0;
+  padding: 0 4px;
+}
+
+/* icône calendrier/heure adaptée au thème sombre */
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator {
+  filter: invert(0.9);
+  opacity: 0.8;
+}
+
+/* Zone de texte */
+textarea {
+  min-height: 80px;
+}
+
+/* Bouton */
+button {
+  width: 100%;
+  padding: 12px;
+  background: #60a5fa;
+  border: none;
+  border-radius: 8px;
+  font-weight: bold;
+  color: #0f172a;
+  cursor: pointer;
+  margin-top: 10px;
+}
+
+button:hover {
+  opacity: 0.9;
+}
+
+/* Cartes événements */
+.event {
+  background: #1e293b;
+  margin-bottom: 15px;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid #334155;
+}
+
+.event-title {
+  font-size: 1.2rem;
+  font-weight: bold;
+}
+
+.event-meta {
+  color: #94a3b8;
+  margin-bottom: 10px;
+}
+
+/* Bloc d’inscription sous un événement */
+.join-card {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #334155;
+}
+
+.join-card input {
+  margin-bottom: 6px;
+}
+
+/* Petit message sous le bouton créer */
+#msgCreate {
+  font-size: 0.9rem;
+  margin-top: 6px;
+}
