@@ -256,7 +256,7 @@ async function loadEvents() {
   EVENTS_CACHE = {};
   let participantsByEvent = {};
 
-   Si admin connecté, on charge aussi la liste des participants
+   //Si admin connecté, on charge aussi la liste des participants
   if (isAdmin) {
     const ids = events.map((ev) => ev.id);
     if (ids.length > 0) {
