@@ -278,7 +278,7 @@ async function loadEvents() {
     }
   }
 
-   --- séparation événements à venir / passés ---
+//   --- séparation événements à venir / passés ---
 
    today au format YYYY-MM-DD
   const todayStr = new Date().toISOString().slice(0, 10);
@@ -326,7 +326,7 @@ async function loadEvents() {
   container.innerHTML = html;
 }
 
- ------------------ INSCRIPTION A UN ÉVÉNEMENT ------------------
+// ------------------ INSCRIPTION A UN ÉVÉNEMENT ------------------
 
 async function joinEvent(eventId) {
   const nameEl = document.getElementById("name-" + eventId);
@@ -346,7 +346,7 @@ async function joinEvent(eventId) {
     return;
   }
 
-   déduire le type de contact
+  // déduire le type de contact
   let contact_type = null;
   if (email && phone) contact_type = "email+sms";
   else if (email) contact_type = "email";
@@ -375,7 +375,7 @@ async function joinEvent(eventId) {
     : "Inscription enregistrée (sans moyen de contact).";
   msg.style.color = "lightgreen";
 
-   Envoi mail / SMS si contact fourni
+  // Envoi mail / SMS si contact fourni
   try {
     if (contact_type && (email || phone)) {
       let ev = EVENTS_CACHE[eventId];
@@ -410,7 +410,7 @@ async function joinEvent(eventId) {
     console.error("Erreur durant la notification (mail/sms) :", err);
   }
 
-   vider les champs
+ //  vider les champs
   nameEl.value = "";
   if (emailEl) emailEl.value = "";
   // on peut laisser le téléphone 
