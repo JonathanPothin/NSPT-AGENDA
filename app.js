@@ -219,8 +219,8 @@ function renderEventCard(ev, participantsByEvent) {
 
       <div class="join-card">
         <input type="text" id="name-${ev.id}" placeholder="Nom">
-        <input type="email" id="email-${ev.id}" placeholder="Email (optionnel)">
-        <input type="tel" id="phone-${ev.id}" placeholder="Téléphone (optionnel)">
+        <input type="email" id="email-${ev.id}" placeholder="Email (ou SMS au choix)">
+        <input type="tel" id="phone-${ev.id}" placeholder="Téléphone (ou Email au choix)">
         <button class="btn btn-full" onclick="joinEvent('${ev.id}')">Je participe</button>
         <p id="msg-${ev.id}"></p>
       </div>
@@ -228,7 +228,7 @@ function renderEventCard(ev, participantsByEvent) {
   `;
 }
 
-// ------------------ CHARGEMENT DES ÉVÉNEMENTS ------------------
+ ------------------ CHARGEMENT DES ÉVÉNEMENTS ------------------
 
 async function loadEvents() {
   const container = document.getElementById("events");
@@ -256,7 +256,7 @@ async function loadEvents() {
   EVENTS_CACHE = {};
   let participantsByEvent = {};
 
-  // Si admin connecté, on charge aussi la liste des participants
+   Si admin connecté, on charge aussi la liste des participants
   if (isAdmin) {
     const ids = events.map((ev) => ev.id);
     if (ids.length > 0) {
@@ -278,9 +278,9 @@ async function loadEvents() {
     }
   }
 
-  // --- séparation événements à venir / passés ---
+   --- séparation événements à venir / passés ---
 
-  // today au format YYYY-MM-DD
+   today au format YYYY-MM-DD
   const todayStr = new Date().toISOString().slice(0, 10);
 
   const upcoming = [];
@@ -294,13 +294,13 @@ async function loadEvents() {
     }
   });
 
-  // tri : à venir du plus proche au plus lointain, passés du plus récent au plus ancien
+   tri : à venir du plus proche au plus lointain, passés du plus récent au plus ancien
   upcoming.sort(compareEventsAsc);
   past.sort(compareEventsDesc);
 
   let html = "";
 
-  // Événements à venir
+   Événements à venir
   if (upcoming.length > 0) {
     html += `<h2 class="events-section-title">Événements à venir</h2>`;
     upcoming.forEach((ev) => {
@@ -310,7 +310,7 @@ async function loadEvents() {
     html += `<p>Aucun événement à venir.</p>`;
   }
 
-  // Événements passés (dans un bloc repliable)
+   Événements passés (dans un bloc repliable)
   if (past.length > 0) {
     html += `
       <details class="events-past">
@@ -326,7 +326,7 @@ async function loadEvents() {
   container.innerHTML = html;
 }
 
-// ------------------ INSCRIPTION A UN ÉVÉNEMENT ------------------
+ ------------------ INSCRIPTION A UN ÉVÉNEMENT ------------------
 
 async function joinEvent(eventId) {
   const nameEl = document.getElementById("name-" + eventId);
@@ -346,7 +346,7 @@ async function joinEvent(eventId) {
     return;
   }
 
-  // déduire le type de contact
+   déduire le type de contact
   let contact_type = null;
   if (email && phone) contact_type = "email+sms";
   else if (email) contact_type = "email";
@@ -375,12 +375,12 @@ async function joinEvent(eventId) {
     : "Inscription enregistrée (sans moyen de contact).";
   msg.style.color = "lightgreen";
 
-  // Envoi mail / SMS si contact fourni
+   Envoi mail / SMS si contact fourni
   try {
     if (contact_type && (email || phone)) {
       let ev = EVENTS_CACHE[eventId];
 
-      // sécurité : si pas dans le cache, on recharge depuis la BDD
+       sécurité : si pas dans le cache, on recharge depuis la BDD
       if (!ev) {
         const { data } = await sb
           .from("events")
@@ -410,10 +410,10 @@ async function joinEvent(eventId) {
     console.error("Erreur durant la notification (mail/sms) :", err);
   }
 
-  // vider les champs
+   vider les champs
   nameEl.value = "";
   if (emailEl) emailEl.value = "";
-  // on peut laisser le téléphone pour gagner du temps si tu veux
+  // on peut laisser le téléphone 
 
   // le realtime mettra à jour, mais pour l'utilisateur courant on recharge
   loadEvents();
