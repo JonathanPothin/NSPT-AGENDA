@@ -5,7 +5,6 @@ const CACHE_NAME = "agenda-cache-v5";
 
 const ASSETS = [
   "./",
-  "@"
   "./index.html",
   "./style.css",
   "./app.js",
