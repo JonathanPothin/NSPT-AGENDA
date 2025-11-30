@@ -1,7 +1,7 @@
 // service-worker.js
 
 // Change la version à chaque mise à jour du site
-const CACHE_NAME = "agenda-cache-v4";
+const CACHE_NAME = "agenda-cache-v5";
 
 const ASSETS = [
   "./",
